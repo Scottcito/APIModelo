@@ -1,35 +1,48 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-from ultralytics import YOLO
-import cv2
-import numpy as np
-from PIL import Image
+import boto3
+import torch
 from io import BytesIO
+from PIL import Image
+import os
+import torchvision.transforms as transforms  # Importar torchvision
 
 app = Flask(__name__)
-CORS(app)  # Permite solicitudes de otros orígenes
 
-model = YOLO("models/abecedariobest.pt")  
+s3 = boto3.client('s3', 
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'), 
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
+)
+
+BUCKET_NAME = 'modeloiasenas'
+MODEL_KEY = 'abecedariobest.pt'
+
+def load_model():
+    model_file = BytesIO()
+    s3.download_fileobj(BUCKET_NAME, MODEL_KEY, model_file)
+    model_file.seek(0)
+    model = torch.load(model_file, map_location=torch.device('cpu'))
+    model.eval()
+    return model
+
+model = load_model()
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-
     file = request.files['file']
-    if not file:
-        return jsonify({'error': 'No file selected'}), 400
+    img = Image.open(file.stream)
+    
+    # Convertir la imagen a tensor
+    transform = transforms.ToTensor()
+    img_tensor = torch.unsqueeze(transform(img), 0)
 
-    image = Image.open(BytesIO(file.read()))
+    # Realiza la inferencia
+    with torch.no_grad():
+        results = model(img_tensor)
 
-    image = np.array(image)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    # Suposición: El modelo devuelve un diccionario con etiquetas
+    labels = [result['label'] for result in results]
 
-    results = model.predict(image, imgsz=640, conf=0.5)  # Ajusta la confianza aquí
-
-    labels = [model.names[int(box[-1])] for box in results[0].boxes.data]
-
-    return jsonify({'labels': labels})
+    return jsonify({"labels": labels})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Asegúrate de que Flask esté escuchando en todas las interfaces
+    app.run(debug=True)
