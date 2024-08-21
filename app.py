@@ -14,7 +14,7 @@ s3 = boto3.client('s3',
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
 
-BUCKET_NAME = 'modeloiasenas'
+BUCKET_NAME = 'modeloprueba'
 MODEL_KEY = 'abecedariobest.pt'
 
 def load_model():
