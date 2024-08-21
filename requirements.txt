@@ -4,3 +4,4 @@ boto3==1.26.14
 torch==2.0.0
 pillow==10.1.0
 torchvision==0.15.1
+Numpy==2.0.0
