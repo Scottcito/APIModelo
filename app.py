@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 import ultralytics
 from ultralytics import YOLO
 import os
+import tempfile
 
 app = Flask(__name__)
 
@@ -22,13 +23,15 @@ MODEL_KEY = 'abecedariobest.pt'
 
 def load_model():
     try:
-        # Descargar el modelo desde S3
         model_file = BytesIO()
         s3.download_fileobj(BUCKET_NAME, MODEL_KEY, model_file)
         model_file.seek(0)
 
-        # Cargar el modelo YOLOv8
-        model = YOLO(model_file)  # Usa YOLOv8 de ultralytics
+        with tempfile.NamedTemporaryFile(delete=False) as temp_model_file:
+            temp_model_file.write(model_file.getbuffer())
+            temp_model_path = temp_model_file.name
+
+        model = YOLO(temp_model_path)
         return model
     except Exception as e:
         print(f"Error loading model: {e}")
@@ -39,14 +42,11 @@ model = load_model()
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Obtener el archivo de la solicitud
         file = request.files['file']
         img = Image.open(file.stream).convert('RGB')
 
-        # Realizar la inferencia
-        results = model(img)  # Inferencia con YOLOv8
+        results = model(img) 
 
-        # Procesar los resultados
         predictions = results.pandas().xyxy[0].to_dict(orient='records')  # Convertir a dict
 
         return jsonify({"predictions": predictions})
