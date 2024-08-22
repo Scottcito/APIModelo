@@ -31,7 +31,7 @@ def load_model():
             temp_model_file.write(model_file.getbuffer())
             temp_model_path = temp_model_file.name
 
-        model = YOLO(temp_model_path)
+        model = YOLO(temp_model_path, task='segment')
         return model
     except Exception as e:
         print(f"Error loading model: {e}")
