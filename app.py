@@ -11,8 +11,8 @@ import tempfile
 
 app = Flask(__name__)
 
-# Configurar el cliente de S3 usando credenciales del entorno
-s3 = boto3.client('s3',
+s3 = boto3.client(
+    's3',
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
     region_name=os.getenv('AWS_REGION')
@@ -27,9 +27,13 @@ def load_model():
         s3.download_fileobj(BUCKET_NAME, MODEL_KEY, model_file)
         model_file.seek(0)
 
-        with tempfile.NamedTemporaryFile(delete=False) as temp_model_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as temp_model_file:
             temp_model_file.write(model_file.getbuffer())
             temp_model_path = temp_model_file.name
+
+        print(f"Temporary model path: {temp_model_path}")
+        print(f"File exists: {os.path.exists(temp_model_path)}")
+        print(f"File size: {os.path.getsize(temp_model_path)} bytes")
 
         model = YOLO(temp_model_path, task='segment')
         return model
@@ -45,9 +49,9 @@ def predict():
         file = request.files['file']
         img = Image.open(file.stream).convert('RGB')
 
-        results = model(img) 
+        results = model(img)
 
-        predictions = results.pandas().xyxy[0].to_dict(orient='records')  # Convertir a dict
+        predictions = results.pandas().xyxy[0].to_dict(orient='records')
 
         return jsonify({"predictions": predictions})
     
@@ -56,4 +60,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=8080)
