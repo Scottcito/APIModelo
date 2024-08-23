@@ -7,3 +7,4 @@ pillow==10.1.0
 numpy<2.0
 ultralytics==8.2.77
 gunicorn==23.0.0
+pandas==1.5.3
