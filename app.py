@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import boto3
 import torch
+import pandas
 from io import BytesIO
 from PIL import Image
 import ultralytics
