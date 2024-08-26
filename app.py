@@ -1,4 +1,4 @@
- from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify
 import boto3
 from io import BytesIO
 from PIL import Image
