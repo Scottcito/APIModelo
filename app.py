@@ -50,7 +50,7 @@ model = load_model()
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        file = request.files['file']
+        file = request.files.get('file')
         if file is None:
             logging.error("No se ha proporcionado ningún archivo.")
             return jsonify({"error": "No se ha proporcionado ningún archivo"}), 400
@@ -60,15 +60,18 @@ def predict():
         # Realizar la inferencia
         results = model(img)
         
-        # Extraer solo los labels de los resultados
+        # Extraer solo los labels de los resultados y unirlos en una sola cadena
         labels = []
         for result in results:
             for box in result.boxes:
                 label = model.names[int(box.cls)]
                 labels.append(label)
         
-        logging.info(f"Predicción realizada con éxito. Labels: {labels}")
-        return jsonify({"labels": labels})
+        # Convertir la lista de labels en una cadena separada por comas
+        text_result = ', '.join(labels)
+
+        logging.info(f"Predicción realizada con éxito. Labels: {text_result}")
+        return text_result  # Retorna solo el texto de las etiquetas
     
     except Exception as e:
         logging.error(f"Error durante la predicción: {e}", exc_info=True)
