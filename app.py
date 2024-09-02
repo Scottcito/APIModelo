@@ -20,7 +20,7 @@ s3 = boto3.client('s3',
 )
 
 BUCKET_NAME = 'modeloprueba'
-MODEL_KEY = 'abecedariobest.pt'
+MODEL_KEY = 'best.pt'
 
 def load_model():
     try:
