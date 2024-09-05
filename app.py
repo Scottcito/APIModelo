@@ -1,32 +1,35 @@
 from flask import Flask, request, jsonify
 import boto3
-from io import BytesIO
-from PIL import Image
-from ultralytics import YOLO
+import cv2
 import os
 import tempfile
 import logging
+from io import BytesIO
+from PIL import Image
+from ultralytics import YOLO
 
 app = Flask(__name__)
 
-# Configurar logging para obtener más detalles de los errores
+# Configurar logging
 logging.basicConfig(level=logging.INFO)
 
-# Configurar el cliente de S3 usando credenciales del entorno
+# Configurar cliente S3
 s3 = boto3.client('s3',
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
     region_name=os.getenv('AWS_REGION')
 )
 
+# Configuración de los modelos
 BUCKET_NAME = 'modeloprueba'
-MODEL_KEY = 'best.pt'
+MODEL_KEY_1 = 'modelo1.pt'
+MODEL_KEY_2 = 'modelo2.pt'
 
-def load_model():
+def load_model(model_key):
     try:
-        logging.info("Intentando descargar el modelo desde S3.")
+        logging.info(f"Intentando descargar el modelo {model_key} desde S3.")
         model_file = BytesIO()
-        s3.download_fileobj(BUCKET_NAME, MODEL_KEY, model_file)
+        s3.download_fileobj(BUCKET_NAME, model_key, model_file)
         model_file.seek(0)
         logging.info("Modelo descargado con éxito.")
 
@@ -36,16 +39,16 @@ def load_model():
             temp_model_path = temp_model_file.name
             logging.info(f"Modelo guardado temporalmente en {temp_model_path}.")
 
-        # Cargar el modelo en el formato .pt
         model = YOLO(temp_model_path)
-        logging.info("Modelo cargado con éxito.")
+        logging.info(f"Modelo {model_key} cargado con éxito.")
         return model
     except Exception as e:
-        logging.error(f"Error al cargar el modelo: {e}", exc_info=True)
+        logging.error(f"Error al cargar el modelo {model_key}: {e}", exc_info=True)
         raise
 
-# Cargar el modelo una vez al inicio
-model = load_model()
+# Cargar los modelos
+model_1 = load_model(MODEL_KEY_1)
+model_2 = load_model(MODEL_KEY_2)
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -57,14 +60,14 @@ def predict():
 
         img = Image.open(file.stream).convert('RGB')
         
-        # Realizar la inferencia
-        results = model(img)
+        # Realizar la inferencia con el primer modelo
+        results = model_1(img)
         
         # Extraer solo los labels de los resultados
         labels = []
         for result in results:
             for box in result.boxes:
-                label = model.names[int(box.cls)]
+                label = model_1.names[int(box.cls)]
                 labels.append(label)
         
         logging.info(f"Predicción realizada con éxito. Labels: {labels}")
@@ -72,6 +75,63 @@ def predict():
     
     except Exception as e:
         logging.error(f"Error durante la predicción: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/predict_video', methods=['POST'])
+def predict_video():
+    try:
+        # Obtener el archivo de video
+        file = request.files['file']
+        if file is None:
+            logging.error("No se ha proporcionado ningún archivo.")
+            return jsonify({"error": "No se ha proporcionado ningún archivo"}), 400
+
+        # Guardar temporalmente el archivo de video
+        video_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+        file.save(video_path)
+
+        # Configurar los parámetros del análisis de movimiento
+        min_sequence_length = 5
+        max_sequence_length = 30
+        frames_buffer = []
+        labels = []
+
+        # Leer el video frame por frame
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logging.error("No se pudo abrir el archivo de video.")
+            return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Realizar la inferencia con el segundo modelo
+            results = model_2(frame)
+
+            # Procesar los resultados y agregar los labels detectados
+            if results:
+                for result in results:
+                    frames_buffer.append(frame)
+
+                    # Extraer los labels de los resultados
+                    for box in result.boxes:
+                        label = model_2.names[int(box.cls)]
+                        labels.append(label)
+
+                    # Limitar la longitud del buffer
+                    if len(frames_buffer) > max_sequence_length:
+                        frames_buffer.pop(0)
+
+        cap.release()
+
+        # Devolver los labels detectados
+        logging.info(f"Predicción con video realizada con éxito. Labels: {labels}")
+        return jsonify({"labels": labels})
+
+    except Exception as e:
+        logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
