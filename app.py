@@ -90,10 +90,6 @@ def predict_video():
         video_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         file.save(video_path)
 
-        # Configurar los parámetros del análisis de movimiento
-        min_sequence_length = 5
-        max_sequence_length = 30
-        frames_buffer = []
         labels = []
 
         # Leer el video frame por frame
@@ -107,32 +103,33 @@ def predict_video():
             if not ret:
                 break
 
-            # Realizar la inferencia con el segundo modelo
+            # Realizar la inferencia con el segundo modelo en cada frame
             results = model_2(frame)
 
             # Procesar los resultados y agregar los labels detectados
             if results:
                 for result in results:
-                    frames_buffer.append(frame)
-
-                    # Extraer los labels de los resultados
                     for box in result.boxes:
                         label = model_2.names[int(box.cls)]
-                        labels.append(label)
+                        if label not in labels:
+                            labels.append(label)
 
-                    # Limitar la longitud del buffer
-                    if len(frames_buffer) > max_sequence_length:
-                        frames_buffer.pop(0)
+                        # Si ya se encontró un label, detener el procesamiento
+                        if labels:
+                            cap.release()  # Cerrar el video
+                            logging.info(f"Predicción realizada con éxito. Labels: {labels}")
+                            return jsonify({"labels": labels})
 
         cap.release()
 
-        # Devolver los labels detectados
+        # Devolver los labels detectados (si no se encontraron, devuelve una lista vacía)
         logging.info(f"Predicción con video realizada con éxito. Labels: {labels}")
         return jsonify({"labels": labels})
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
