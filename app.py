@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 from ultralytics import YOLO
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -71,7 +71,7 @@ def predict():
                 labels.append(label)
         
         logging.info(f"Predicción realizada con éxito. Labels: {labels}")
-        return jsonify({"labels": labels})
+        return jsonify({"data": {"labels": labels}})
     
     except Exception as e:
         logging.error(f"Error durante la predicción: {e}", exc_info=True)
@@ -107,29 +107,26 @@ def predict_video():
             results = model_2(frame)
 
             # Procesar los resultados y agregar los labels detectados
-            if results:
-                for result in results:
-                    for box in result.boxes:
-                        label = model_2.names[int(box.cls)]
-                        if label not in labels:
-                            labels.append(label)
+            for result in results:
+                for box in result.boxes:
+                    label = model_2.names[int(box.cls)]
+                    if label not in labels:
+                        labels.append(label)
 
-                        # Si ya se encontró un label, detener el procesamiento
-                        if labels:
-                            cap.release()  # Cerrar el video
-                            logging.info(f"Predicción realizada con éxito. Labels: {labels}")
-                            return jsonify({"labels": labels})
+            # Puedes detener el proceso si ya tienes suficientes labels
+            if labels:
+                break
 
         cap.release()
 
-        # Devolver los labels detectados (si no se encontraron, devuelve una lista vacía)
+        # Devolver los labels detectados
         logging.info(f"Predicción con video realizada con éxito. Labels: {labels}")
-        return jsonify({"labels": labels})
+        return jsonify({"data": {"labels": labels}})
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(debug=True)
