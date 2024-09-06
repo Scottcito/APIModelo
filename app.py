@@ -54,27 +54,18 @@ model_2 = load_model(MODEL_KEY_2)
 def predict():
     try:
         file = request.files['file']
-        if file is None:
-            logging.error("No se ha proporcionado ningún archivo.")
-            return jsonify({"error": "No se ha proporcionado ningún archivo"}), 400
-
         img = Image.open(file.stream).convert('RGB')
         
         # Realizar la inferencia con el primer modelo
         results = model_1(img)
         
-        # Extraer solo los labels de los resultados
-        labels = []
-        for result in results:
-            for box in result.boxes:
-                label = model_1.names[int(box.cls)]
-                labels.append(label)
+        # Extraer solo los labels
+        labels = [model_1.names[int(pred['class'])] for pred in results.pandas().xyxy[0].to_dict(orient='records')]
         
-        logging.info(f"Predicción realizada con éxito. Labels: {labels}")
-        return jsonify({"data": {"labels": labels}})
+        return jsonify({"labels": labels})
     
     except Exception as e:
-        logging.error(f"Error durante la predicción: {e}", exc_info=True)
+        print(f"Error during prediction: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/predict_video', methods=['POST'])
