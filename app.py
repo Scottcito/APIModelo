@@ -60,7 +60,11 @@ def predict():
         results = model_1(img)
         
         # Extraer solo los labels
-        labels = [model_1.names[int(pred['class'])] for pred in results.pandas().xyxy[0].to_dict(orient='records')]
+        labels = []
+        for result in results:
+            for box in result.boxes:
+                label = model_1.names[int(box.cls)]
+                labels.append(label)
         
         return jsonify({"labels": labels})
     
