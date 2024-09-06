@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 from ultralytics import YOLO
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -128,5 +128,5 @@ def predict_video():
         return jsonify({"error": str(e)}), 500
 
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(debug=True)
