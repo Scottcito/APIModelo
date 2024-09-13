@@ -23,7 +23,7 @@ s3 = boto3.client('s3',
 # Configuración de los modelos
 BUCKET_NAME = 'modeloprueba'
 MODEL_KEY_1 = 'best.pt'
-MODEL_KEY_2 = 'palabrasbest1.pt'
+MODEL_KEY_2 = 'palabrasbest.pt'
 
 def load_model(model_key):
     try:
@@ -71,7 +71,7 @@ def predict():
     except Exception as e:
         print(f"Error during prediction: {e}")
         return jsonify({"error": str(e)}), 500
-        
+
 @app.route('/predict_video', methods=['POST'])
 def predict_video():
     try:
@@ -120,7 +120,8 @@ def predict_video():
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
