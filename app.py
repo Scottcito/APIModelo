@@ -71,7 +71,7 @@ def predict():
     except Exception as e:
         print(f"Error during prediction: {e}")
         return jsonify({"error": str(e)}), 500
-
+        
 @app.route('/predict_video', methods=['POST'])
 def predict_video():
     try:
@@ -104,11 +104,9 @@ def predict_video():
             # Procesar los resultados y agregar los labels detectados
             for result in results:
                 for box in result.boxes:
-                    confidence = box.conf
-                    if confidence >= 0.7:  # Aplicar el umbral de confianza
-                        label = model_2.names[int(box.cls)]
-                        if label not in labels:
-                            labels.append(label)
+                    label = model_2.names[int(box.cls)]
+                    if label not in labels:
+                        labels.append(label)
 
             # Puedes detener el proceso si ya tienes suficientes labels
             if labels:
@@ -122,8 +120,7 @@ def predict_video():
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
