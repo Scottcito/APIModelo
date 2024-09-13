@@ -104,9 +104,11 @@ def predict_video():
             # Procesar los resultados y agregar los labels detectados
             for result in results:
                 for box in result.boxes:
-                    label = model_2.names[int(box.cls)]
-                    if label not in labels:
-                        labels.append(label)
+                    confidence = box.conf
+                    if confidence >= 0.7:  # Aplicar el umbral de confianza
+                        label = model_2.names[int(box.cls)]
+                        if label not in labels:
+                            labels.append(label)
 
             # Puedes detener el proceso si ya tienes suficientes labels
             if labels:
