@@ -85,7 +85,7 @@ def predict_video():
         video_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         file.save(video_path)
 
-        labels = []
+        label_counts = {}  # Contador de labels
 
         # Leer el video frame por frame
         cap = cv2.VideoCapture(video_path)
@@ -101,22 +101,24 @@ def predict_video():
             # Realizar la inferencia con el segundo modelo en cada frame
             results = model_2(frame)
 
-            # Procesar los resultados y agregar los labels detectados
+            # Procesar los resultados y contar los labels detectados
             for result in results:
                 for box in result.boxes:
                     label = model_2.names[int(box.cls)]
-                    if label not in labels:
-                        labels.append(label)
-
-            # Puedes detener el proceso si ya tienes suficientes labels
-            if labels:
-                break
+                    if label in label_counts:
+                        label_counts[label] += 1
+                    else:
+                        label_counts[label] = 1
 
         cap.release()
 
+        # Filtrar labels que superan un umbral de frecuencia
+        threshold = 5  # Puedes ajustar el umbral según sea necesario
+        filtered_labels = [label for label, count in label_counts.items() if count >= threshold]
+
         # Devolver los labels detectados
-        logging.info(f"Predicción con video realizada con éxito. Labels: {labels}")
-        return jsonify({"data": {"labels": labels}})
+        logging.info(f"Predicción con video realizada con éxito. Labels: {filtered_labels}")
+        return jsonify({"data": {"labels": filtered_labels}})
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
