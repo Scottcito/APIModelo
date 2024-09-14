@@ -113,7 +113,7 @@ def predict_video():
         cap.release()
 
         # Filtrar labels que superan un umbral de frecuencia
-        threshold = 5  # Puedes ajustar el umbral según sea necesario
+        threshold = 10  # Puedes ajustar el umbral según sea necesario
         filtered_labels = [label for label, count in label_counts.items() if count >= threshold]
 
         # Devolver los labels detectados
