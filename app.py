@@ -6,10 +6,9 @@ import tempfile
 import logging
 from io import BytesIO
 from PIL import Image
-import numpy as np
 from ultralytics import YOLO
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -94,37 +93,27 @@ def predict_video():
             logging.error("No se pudo abrir el archivo de video.")
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
-        frame_count = 0
-        process_every_n_frames = 2  # Procesar cada 5 frames para reducir carga
-
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Procesar cada n frames para optimizar el rendimiento
-            if frame_count % process_every_n_frames == 0:
-                # Convertir el frame a RGB para la inferencia
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Realizar la inferencia con el segundo modelo en cada frame
+            results = model_2(frame)
 
-                # Realizar la inferencia con el segundo modelo en cada frame
-                results = model_2(rgb_frame)
-
-                # Procesar los resultados y contar los labels detectados
-                for result in results:
-                    for box in result.boxes:
-                        label = model_2.names[int(box.cls)]
-                        if label in label_counts:
-                            label_counts[label] += 1
-                        else:
-                            label_counts[label] = 1
-
-            frame_count += 1
+            # Procesar los resultados y contar los labels detectados
+            for result in results:
+                for box in result.boxes:
+                    label = model_2.names[int(box.cls)]
+                    if label in label_counts:
+                        label_counts[label] += 1
+                    else:
+                        label_counts[label] = 1
 
         cap.release()
 
         # Filtrar labels que superan un umbral de frecuencia
-        threshold = 5  # Ajuste del umbral para mayor sensibilidad
+        threshold = 7  # Puedes ajustar el umbral según sea necesario
         filtered_labels = [label for label, count in label_counts.items() if count >= threshold]
 
         # Devolver los labels detectados
@@ -136,5 +125,5 @@ def predict_video():
         return jsonify({"error": str(e)}), 500
 
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(debug=True)
