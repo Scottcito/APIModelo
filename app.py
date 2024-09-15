@@ -95,7 +95,7 @@ def predict_video():
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
         frame_count = 0
-        process_every_n_frames = 5  # Procesar cada 5 frames para reducir carga
+        process_every_n_frames = 2  # Procesar cada 5 frames para reducir carga
 
         while cap.isOpened():
             ret, frame = cap.read()
