@@ -87,8 +87,7 @@ def predict_video():
 
         # Diccionario para contar las etiquetas
         label_counts = {}
-        frequency_threshold = 3  # Umbral de frecuencia para filtrar etiquetas
-        max_frames_to_process = 100  # Número máximo de frames a procesar
+        stop_threshold = 3  # Umbral para detener el procesamiento
 
         # Leer el video frame por frame
         cap = cv2.VideoCapture(video_path)
@@ -96,7 +95,6 @@ def predict_video():
             logging.error("No se pudo abrir el archivo de video.")
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
-        frame_count = 0
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -114,19 +112,17 @@ def predict_video():
                     else:
                         label_counts[label] = 1
 
-            frame_count += 1
-            if frame_count >= max_frames_to_process:
-                logging.info(f"Se ha alcanzado el límite de {max_frames_to_process} frames procesados.")
-                break
+                    # Verificar si alguna etiqueta alcanza el umbral
+                    if label_counts[label] >= stop_threshold:
+                        cap.release()  # Liberar el video
+                        logging.info(f"Se detectó la etiqueta '{label}' {stop_threshold} veces. Deteniendo el procesamiento.")
+                        return jsonify({"data": {"labels": [label]}})
 
         cap.release()
 
-        # Filtrar labels que superan el umbral de frecuencia
-        filtered_labels = [label for label, count in label_counts.items() if count >= frequency_threshold]
-
-        # Devolver los labels detectados
-        logging.info(f"Predicción con video realizada con éxito. Labels: {filtered_labels}")
-        return jsonify({"data": {"labels": filtered_labels}})
+        # Devolver los labels detectados si no se alcanzó el umbral
+        logging.info(f"Predicción con video realizada con éxito. Labels: {list(label_counts.keys())}")
+        return jsonify({"data": {"labels": list(label_counts.keys())}})
 
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
