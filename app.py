@@ -59,6 +59,7 @@ model_2 = load_model(MODEL_KEY_2)
 model_labels = ['Adios', 'Buenas Noches', 'Buenas Tardes', 'Buenos Dias', 'Hola']
 model_labels_normalized = [remove_accents(label) for label in model_labels]
 
+
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
@@ -73,9 +74,7 @@ def predict():
         for result in results:
             for box in result.boxes:
                 label = model_1.names[int(box.cls)]
-                normalized_label = remove_accents(label)
-                if normalized_label in model_labels_normalized:
-                    labels.append(label)
+                labels.append(label)
         
         return jsonify({"labels": labels})
     
