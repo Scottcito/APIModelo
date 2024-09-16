@@ -75,9 +75,8 @@ def predict():
 @app.route('/predict_video', methods=['POST'])
 def predict_video():
     try:
-        # Obtener el archivo de video
         file = request.files['file']
-        if file is None:
+        if not file:
             logging.error("No se ha proporcionado ningún archivo.")
             return jsonify({"error": "No se ha proporcionado ningún archivo"}), 400
 
@@ -85,10 +84,7 @@ def predict_video():
         video_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         file.save(video_path)
 
-        # Diccionario para contar las etiquetas
         label_counts = {label: 0 for label in ["Buenos Días", "Hola", "Adiós", "Buenas Tardes", "Buenas Noches"]}
-        
-        # Definir umbrales específicos por etiqueta
         label_thresholds = {
             "Buenos Días": 20,
             "Hola": 15,
@@ -97,33 +93,37 @@ def predict_video():
             "Buenas Noches": 5,
         }
 
-        # Leer el video frame por frame
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             logging.error("No se pudo abrir el archivo de video.")
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
-        while cap.isOpened():
+        frame_limit = 100  # Límite de frames
+        frame_count = 0
+        
+        while cap.isOpened() and frame_count < frame_limit:
             ret, frame = cap.read()
             if not ret:
                 break
-            # Realizar la inferencia con el segundo modelo en cada frame
+            frame_count += 1
+
+            # Redimensionar el frame para acelerar la inferencia
+            frame = cv2.resize(frame, (640, 480))
+
+            # Realizar la inferencia con el segundo modelo
             results = model_2(frame)
-            # Procesar los resultados y contar los labels detectados
             for result in results:
                 for box in result.boxes:
                     label = model_2.names[int(box.cls)]
                     if label in label_counts:
                         label_counts[label] += 1
-                        # Verificar si alguna etiqueta alcanza el umbral
                         if label_counts[label] >= label_thresholds[label]:
-                            cap.release()  # Liberar el video
+                            cap.release()
                             logging.info(f"Se detectó la etiqueta '{label}' {label_thresholds[label]}")
                             return jsonify({"data": {"labels": [label]}})
 
         cap.release()
 
-        # Devolver los labels detectados si no se alcanzó el umbral
         logging.info(f"Predicción con video realizada con éxito. Labels: {list(label_counts.keys())}")
         return jsonify({"data": {"labels": list(label_counts.keys())}})
 
