@@ -100,8 +100,8 @@ def predict_video():
             "Buenos Dias": 18,
             "Hola": 17,
             "Adios": 10,
-            "Buenas Tardes": 3,
-            "Buenas Noches": 5,
+            "Buenas Tardes": 6,
+            "Buenas Noches": 7,
         }
 
         cap = cv2.VideoCapture(video_path)
