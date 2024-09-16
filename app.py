@@ -86,8 +86,16 @@ def predict_video():
         file.save(video_path)
 
         # Diccionario para contar las etiquetas
-        label_counts = {}
-        stop_threshold = 3  # Umbral para detener el procesamiento
+        label_counts = {label: 0 for label in ["Buenos Días", "Hola", "Adiós", "Buenas Tardes", "Buenas Noches"]}
+        
+        # Definir umbrales específicos por etiqueta
+        label_thresholds = {
+            "Buenos Días": 20,
+            "Hola": 15,
+            "Adiós": 10,
+            "Buenas Tardes": 3,
+            "Buenas Noches": 5,
+        }
 
         # Leer el video frame por frame
         cap = cv2.VideoCapture(video_path)
@@ -99,24 +107,19 @@ def predict_video():
             ret, frame = cap.read()
             if not ret:
                 break
-
             # Realizar la inferencia con el segundo modelo en cada frame
             results = model_2(frame)
-
             # Procesar los resultados y contar los labels detectados
             for result in results:
                 for box in result.boxes:
                     label = model_2.names[int(box.cls)]
                     if label in label_counts:
                         label_counts[label] += 1
-                    else:
-                        label_counts[label] = 1
-
-                    # Verificar si alguna etiqueta alcanza el umbral
-                    if label_counts[label] >= stop_threshold:
-                        cap.release()  # Liberar el video
-                        logging.info(f"Se detectó la etiqueta '{label}' {stop_threshold} veces. Deteniendo el procesamiento.")
-                        return jsonify({"data": {"labels": [label]}})
+                        # Verificar si alguna etiqueta alcanza el umbral
+                        if label_counts[label] >= label_thresholds[label]:
+                            cap.release()  # Liberar el video
+                            logging.info(f"Se detectó la etiqueta '{label}' {label_thresholds[label]}")
+                            return jsonify({"data": {"labels": [label]}})
 
         cap.release()
 
