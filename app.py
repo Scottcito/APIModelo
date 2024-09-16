@@ -7,6 +7,7 @@ import logging
 from io import BytesIO
 from PIL import Image
 from ultralytics import YOLO
+import unicodedata
 
 app = Flask(__name__)
 
@@ -46,9 +47,17 @@ def load_model(model_key):
         logging.error(f"Error al cargar el modelo {model_key}: {e}", exc_info=True)
         raise
 
+def remove_accents(input_str):
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
 # Cargar los modelos
 model_1 = load_model(MODEL_KEY_1)
 model_2 = load_model(MODEL_KEY_2)
+
+# Etiquetas del modelo
+model_labels = ['Adios', 'Buenas Noches', 'Buenas Tardes', 'Buenos Dias', 'Hola']
+model_labels_normalized = [remove_accents(label) for label in model_labels]
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -64,14 +73,15 @@ def predict():
         for result in results:
             for box in result.boxes:
                 label = model_1.names[int(box.cls)]
-                labels.append(label)
+                normalized_label = remove_accents(label)
+                if normalized_label in model_labels_normalized:
+                    labels.append(label)
         
         return jsonify({"labels": labels})
     
     except Exception as e:
         print(f"Error during prediction: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/predict_video', methods=['POST'])
 def predict_video():
@@ -85,13 +95,13 @@ def predict_video():
         video_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
         file.save(video_path)
 
-        label_counts = {label: 0 for label in ["Buenos Días", "Hola", "Adiós", "Buenas Tardes", "Buenas Noches"]}
+        label_counts = {label: 0 for label in model_labels}
         label_thresholds = {
-            "Buenos Días": 16,
+            "Buenos Dias": 18,
             "Hola": 17,
-            "Adiós": 10,
-            "Buenas Tardes": 7,
-            "Buenas Noches": 7,
+            "Adios": 10,
+            "Buenas Tardes": 3,
+            "Buenas Noches": 5,
         }
 
         cap = cv2.VideoCapture(video_path)
@@ -100,15 +110,14 @@ def predict_video():
             os.remove(video_path)  # Eliminar el archivo de video temporal
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
-        frame_limit = 200  # Límite de frames
         frame_count = 0
-        
-        while cap.isOpened() and frame_count < frame_limit:
+        detected_label = None
+
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 logging.info("Se llegó al final del video o no se pudo leer el frame.")
                 break
-            frame_count += 1
 
             # Redimensionar el frame para acelerar la inferencia
             frame = cv2.resize(frame, (640, 480))
@@ -118,16 +127,19 @@ def predict_video():
             for result in results:
                 for box in result.boxes:
                     label = model_2.names[int(box.cls)]
-                    if label in label_counts:
-                        label_counts[label] += 1
-                        logging.info(f"Etiqueta '{label}' detectada, conteo actual: {label_counts[label]}")
+                    normalized_label = remove_accents(label)
+                    if normalized_label in model_labels_normalized:
+                        actual_label = model_labels[model_labels_normalized.index(normalized_label)]
+                        label_counts[actual_label] += 1
+                        logging.info(f"Etiqueta '{actual_label}' detectada, conteo actual: {label_counts[actual_label]}")
 
                         # Verificar si alguna etiqueta alcanza el umbral
-                        if label_counts[label] >= label_thresholds[label]:
+                        if label_counts[actual_label] >= label_thresholds[actual_label]:
+                            detected_label = actual_label
                             cap.release()
                             os.remove(video_path)  # Eliminar el archivo de video temporal
-                            logging.info(f"Se detectó la etiqueta '{label}' {label_thresholds[label]} veces. Deteniendo el procesamiento.")
-                            return jsonify({"data": {"labels": [label]}})
+                            logging.info(f"Se detectó la etiqueta '{detected_label}' {label_thresholds[actual_label]} veces. Deteniendo el procesamiento.")
+                            return jsonify({"data": {"labels": [detected_label]}})
 
         cap.release()
         os.remove(video_path)  # Eliminar el archivo de video temporal
@@ -139,9 +151,6 @@ def predict_video():
     except Exception as e:
         logging.error(f"Error durante la predicción con el video: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
