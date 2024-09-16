@@ -98,7 +98,7 @@ def predict_video():
             logging.error("No se pudo abrir el archivo de video.")
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
-        frame_limit = 100  # Límite de frames
+        frame_limit = 200  # Límite de frames
         frame_count = 0
         
         while cap.isOpened() and frame_count < frame_limit:
