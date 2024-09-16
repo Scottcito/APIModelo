@@ -86,8 +86,8 @@ def predict_video():
 
         label_counts = {label: 0 for label in ["Buenos Días", "Hola", "Adiós", "Buenas Tardes", "Buenas Noches"]}
         label_thresholds = {
-            "Buenos Días": 20,
-            "Hola": 15,
+            "Buenos Días": 18,
+            "Hola": 17,
             "Adiós": 10,
             "Buenas Tardes": 3,
             "Buenas Noches": 5,
