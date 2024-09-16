@@ -110,6 +110,7 @@ def predict_video():
             os.remove(video_path)  # Eliminar el archivo de video temporal
             return jsonify({"error": "No se pudo abrir el archivo de video."}), 500
 
+        frame_limit = 150  # Límite de frames
         frame_count = 0
         detected_label = None
 
